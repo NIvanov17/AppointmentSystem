@@ -21,12 +21,12 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
             </button>
 
             <nav className="space-y-2 text-gray-700">
-                <NavItem icon={<Calendar />} label="Appointments" path="/appointments" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Users />} label="Workout Sessions" path="/workout-sessions" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<ClipboardList />} label="Workflows" path="/workflows" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Book />} label="Booking Pages" path="/booking-pages" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<User />} label="Trainers" path="/trainers" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Settings />} label="Settings" path="/settings" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Calendar />} label="Appointments" path="/app/appointments" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Users />} label="Workout Sessions" path="/app/workout-sessions" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<ClipboardList />} label="Workflows" path="/app/workflows" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Book />} label="Booking Pages" path="/app/booking-pages" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<User />} label="Trainers" path="/app/trainers" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Settings />} label="Settings" path="/app/settings" sidebarOpen={sidebarOpen} />
             </nav>
         </aside>
     );

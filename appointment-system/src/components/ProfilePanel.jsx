@@ -1,6 +1,14 @@
 import { X, Crown, LogOut, HelpCircle } from "lucide-react";
+import { auth } from "../auth/token";
+import { useNavigate } from "react-router-dom";
 
 const ProfilePanel = ({ isOpen, onClose }) => {
+    const navigate = useNavigate();
+    const handleLogout = () => {
+        auth.clear();
+        window.dispatchEvent(new Event("auth:change"));
+        navigate("/", { replace: true });
+    };
     return (
         <div
             className={`fixed top-0 right-0 h-full w-80 bg-white shadow-lg z-50 transform transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"
@@ -18,7 +26,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
                     <span className="text-4xl text-slate-500">👤</span>
                 </div>
                 <h3 className="mt-4 text-lg font-bold text-slate-800">Nikolay Ivanov</h3>
-                <p className="text-sm text-slate-500">niknovovelski@abv.bg</p>
+                <p className="text-sm text-slate-500">testExample@abv.bg</p>
                 <p className="text-xs text-slate-400">Europe/Sofia</p>
                 <a href="#" className="text-sky-600 text-sm hover:underline mt-1 inline-block">
                     View Org Details
@@ -28,7 +36,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
             <div className="border-t">
                 <div className="px-6 py-4">
                     <button className="w-full text-left text-slate-700 text-sm font-medium mb-3">My Account</button>
-                    <button className="w-full text-left text-red-500 text-sm font-medium flex items-center gap-2">
+                    <button onClick={handleLogout} className="w-full text-left text-red-500 text-sm font-medium flex items-center gap-2">
                         <LogOut size={16} /> Sign Out
                     </button>
                 </div>

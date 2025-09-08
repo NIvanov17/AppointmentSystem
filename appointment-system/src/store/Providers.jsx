@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { Outlet } from "react-router-dom";
 import Sidebar from "../components/SideBar";
 import Topbar from "../components/Topbar";
 
-const Indexx = ({ children }) => {
+const Providers = ({ children }) => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
     return (
@@ -13,7 +14,7 @@ const Indexx = ({ children }) => {
                 <Topbar />
 
                 <main className="flex-1 flex bg-slate-50 overflow-y-auto">
-                    {children}
+                    <Outlet />
                 </main>
 
 
@@ -22,4 +23,4 @@ const Indexx = ({ children }) => {
     );
 };
 
-export default Indexx;
+export default Providers;
