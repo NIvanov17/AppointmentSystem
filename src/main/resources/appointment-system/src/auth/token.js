@@ -10,6 +10,7 @@ export const auth = {
 
     get: () => STORAGE.getItem(KEYS.token),
     isLoggedIn: () => !!STORAGE.getItem(KEYS.token),
+    getRole: () => sessionStorage.getItem("role"),
 
     set: (token, { email, role } = {}) => {
         STORAGE.setItem(KEYS.token, token);

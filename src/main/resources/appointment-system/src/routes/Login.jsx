@@ -5,7 +5,7 @@ import { auth } from "../auth/token";
 
 export default function Login() {
     const [form, setForm] = useState({ email: "", password: "" });
-    const [validationError, setValidationError] = useState("");
+    const [error, setError] = useState("");
     const navigate = useNavigate();
 
     const onChange = (e) =>
@@ -13,21 +13,46 @@ export default function Login() {
 
     const onSubmit = async (e) => {
         e.preventDefault();
-        const res = await fetch("http://localhost:8080/api/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: form.email, password: form.password }),
-        });
-        if (!res.ok) throw new Error("Unauthorized");
-        const data = await res.json();
+        setError("");
 
-        const token = data.token || data.accessToken;
-        if (!token) throw new Error("Missing token");
+        try {
+            const res = await fetch("http://localhost:8080/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: form.email, password: form.password }),
+            });
 
-        auth.set(token, { email: data.email, role: data.role });
+            if (!res.ok) {
+                if (res.status === 401) {
+                    setError("Invalid email or password");
+                } else {
+                    // Try to read server message if any
+                    let msg = "Something went wrong. Please try again.";
+                    try {
+                        const errData = await res.json();
+                        if (errData?.message) msg = errData.message;
+                    } catch (_) { /* no json body */ }
+                    setError(msg);
+                }
+                return;
+            }
+            const data = await res.json();
 
-        navigate("/", { replace: true });
+            const token = data.token ?? data.accessToken;
+            if (!token) {
+                setError("Login succeeded but no token was returned.");
+                return;
+            }
+
+            auth.set(token, { email: data.email, role: data.role });
+
+            navigate("/", { replace: true });
+        } catch (err) {
+            console.error("Login error:", err);
+            setError("Network error. Please try again later.");
+        }
     };
+
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -48,12 +73,9 @@ export default function Login() {
                             Log in to your account
                         </h1>
 
-                        {validationError && (
-                            <div
-                                role="alert"
-                                className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
-                            >
-                                {validationError}
+                        {error && (
+                            <div className="text-red-500 text-sm mt-2">
+                                {error}
                             </div>
                         )}
 

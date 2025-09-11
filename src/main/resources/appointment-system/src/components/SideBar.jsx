@@ -1,7 +1,12 @@
 import { Menu, Calendar, Users, Settings, ClipboardList, Book, User } from "lucide-react";
 import NavItem from "./NavItem";
+import { auth } from "../auth/token"
 
 const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
+    const role = auth.getRole() || "";
+    const base = role === "PROVIDER" ? "/app/providers" : "/app/clients";
+    const APPOINTMENTS_SEG = role === "PROVIDER" ? "appointment-providers" : "appointments";
+
     return (
         <aside
             className={`${sidebarOpen ? "w-64" : "w-20"
@@ -21,12 +26,12 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
             </button>
 
             <nav className="space-y-2 text-gray-700">
-                <NavItem icon={<Calendar />} label="Appointments" path="/app/appointments" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Users />} label="Workout Sessions" path="/app/workout-sessions" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<ClipboardList />} label="Workflows" path="/app/workflows" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Book />} label="Booking Pages" path="/app/booking-pages" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<User />} label="Trainers" path="/app/trainers" sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Settings />} label="Settings" path="/app/settings" sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Calendar />} label="Appointments" path={`${base}/${APPOINTMENTS_SEG}`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Users />} label="Workout Sessions" path={`${base}/workout-sessions`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<ClipboardList />} label="Workflows" path={`${base}/workflows`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Book />} label="Booking Pages" path={`${base}/booking-pages`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<User />} label="Trainers" path={`${base}/trainers`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Settings />} label="Settings" path={`${base}/settings`} sidebarOpen={sidebarOpen} />
             </nav>
         </aside>
     );

@@ -1,15 +1,51 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logoPng from "../assets/logo_ready.png";
 
 export default function Register() {
-    const [form, setForm] = useState({ company: "", fullName: "", email: "", password: "" });
+    const [form, setForm] = useState({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phoneNumber: "",
+        password: "",
+    });
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
-    const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+    const onChange = (e) =>
+        setForm({ ...form, [e.target.name]: e.target.value });
+
     const onSubmit = (e) => {
         e.preventDefault();
-        // TODO: call your API (e.g., POST /api/auth/register)
-        console.log("register payload:", form);
+        setError(null);
+
+        const registerDTO = {
+            firstName: form.firstName,
+            lastName: form.lastName,
+            email: form.email,
+            phoneNumber: form.phoneNumber,
+            password: form.password,
+        };
+
+        fetch("http://localhost:8080/api/register/provider", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(registerDTO),
+        })
+            .then((res) => {
+                if (!res.ok) {
+                    return res.json().then((errData) => {
+                        throw new Error(errData.message || `Registration failed (${res.status})`);
+                    });
+                }
+                return res.text();
+            })
+            .then((msg) => {
+                alert(msg || "Registered!");
+                navigate("/register/service", { state: { email: form.email } });
+            })
+            .catch((err) => setError(err?.message || "Something went wrong"));
     };
 
     return (
@@ -17,20 +53,16 @@ export default function Register() {
             {/* top bar */}
             <header className="border-b border-slate-200 bg-white">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-                    <div className="flex items-center gap-2">
-                        <Link to="/" className="flex items-center gap-2">
-                            <img src={logoPng} alt="Logo" className="h-7 w-auto" />
-                            <span className="text-lg font-extrabold tracking-tight">Reserv</span>
-                        </Link>
-                    </div>
-                    <div className="text-sm">
-                        <Link
-                            to="/login"
-                            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-                        >
-                            Log in
-                        </Link>
-                    </div>
+                    <Link to="/" className="flex items-center gap-2">
+                        <img src={logoPng} alt="Logo" className="h-7 w-auto" />
+                        <span className="text-lg font-extrabold tracking-tight">Reserv</span>
+                    </Link>
+                    <Link
+                        to="/login"
+                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
+                    >
+                        Log in
+                    </Link>
                 </div>
             </header>
 
@@ -41,35 +73,45 @@ export default function Register() {
                     <div className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                         <h1 className="text-2xl font-bold tracking-tight">Create business account</h1>
 
+                        {/* error message */}
+                        {error && (
+                            <div
+                                role="alert"
+                                className="mt-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700"
+                            >
+                                {error}
+                            </div>
+                        )}
+
                         <form onSubmit={onSubmit} className="mt-6 space-y-4">
                             <div>
-                                <label htmlFor="company" className="mb-1 block text-sm font-medium text-slate-700">
-                                    Company name
+                                <label htmlFor="firstName" className="mb-1 block text-sm font-medium text-slate-700">
+                                    First Name
                                 </label>
                                 <input
-                                    id="company"
-                                    name="company"
+                                    id="firstName"
+                                    name="firstName"
                                     type="text"
-                                    value={form.company}
+                                    value={form.firstName}
                                     onChange={onChange}
-                                    className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-                                    placeholder="Acme Fitness"
+                                    className="block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                                    placeholder="Jane"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label htmlFor="fullName" className="mb-1 block text-sm font-medium text-slate-700">
-                                    Full name
+                                <label htmlFor="lastName" className="mb-1 block text-sm font-medium text-slate-700">
+                                    Last name
                                 </label>
                                 <input
-                                    id="fullName"
-                                    name="fullName"
+                                    id="lastName"
+                                    name="lastName"
                                     type="text"
-                                    value={form.fullName}
+                                    value={form.lastName}
                                     onChange={onChange}
                                     className="block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
-                                    placeholder="Jane Doe"
+                                    placeholder="Doe"
                                     required
                                 />
                             </div>
@@ -86,6 +128,23 @@ export default function Register() {
                                     onChange={onChange}
                                     className="block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
                                     placeholder="you@company.com"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="phoneNumber" className="mb-1 block text-sm font-medium text-slate-700">
+                                    Phone Number
+                                </label>
+                                <input
+                                    id="phoneNumber"
+                                    name="phoneNumber"
+                                    type="tel"
+                                    value={form.phoneNumber}
+                                    onChange={onChange}
+                                    className="block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                                    placeholder="+359888123456"
+                                    pattern="^\+?[0-9]{7,15}$"
                                     required
                                 />
                             </div>
@@ -114,44 +173,20 @@ export default function Register() {
                                 CREATE ACCOUNT
                             </button>
 
-                            {/* or continue with
-                            <div className="relative py-2">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-slate-200" />
-                                </div>
-                                <div className="relative flex justify-center">
-                                    <span className="bg-white px-3 text-xs text-slate-500">or continue with</span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                <SocialBtn brand="Google" />
-                                <SocialBtn brand="Apple" />
-                                <SocialBtn brand="Facebook" />
-                            </div> */}
-
                             <p className="mt-4 text-xs leading-relaxed text-slate-500">
                                 By signing in or creating an account, you agree with our{" "}
-                                <a href="#" className="text-sky-700 hover:underline">
-                                    Terms & Conditions
-                                </a>{" "}
-                                and{" "}
-                                <a href="#" className="text-sky-700 hover:underline">
-                                    Privacy Policy
-                                </a>
-                                .
+                                <a href="#" className="text-sky-700 hover:underline">Terms & Conditions</a> and{" "}
+                                <a href="#" className="text-sky-700 hover:underline">Privacy Policy</a>.
                             </p>
 
                             <p className="mt-6 text-center text-sm text-slate-600">
                                 Already have a business account?{" "}
-                                <Link to="/login" className="text-sky-700 hover:underline">
-                                    Log in
-                                </Link>
+                                <Link to="/login" className="text-sky-700 hover:underline">Log in</Link>
                             </p>
                         </form>
                     </div>
 
-                    {/* right: benefits + testimonial */}
+                    {/* right: static info */}
                     <aside className="mx-auto w-full max-w-xl lg:mx-0">
                         <h2 className="text-2xl font-bold tracking-tight">Start your free 14-day trial now</h2>
                         <p className="mt-1 text-slate-600">No fees. No credit card required.</p>
