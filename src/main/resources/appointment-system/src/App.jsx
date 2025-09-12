@@ -10,6 +10,7 @@ import SignUpUser from "./routes/SignUpUser";
 import SignUpProvider from "./routes/SignUpProvider";
 import RegisterService from "./routes/RegisterService";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import BookService from "./components/Bookservice";
 
 const Placeholder = ({ title }) => (
     <div className="p-6 text-slate-500 text-center">
@@ -45,7 +46,7 @@ export default function App() {
                 <Route path="/app/clients" element={<Providers />}>
                     <Route index element={<Navigate to="appointments" replace />} />
                     <Route path="appointments" element={<AppointmentsPage />} />
-                    <Route path="workout-sessions" element={<Placeholder title="Workout Sessions" />} />
+                    <Route path="workout-sessions" element={<BookService />} />
                     <Route path="workflows" element={<Placeholder title="Workflows" />} />
                     <Route path="booking-pages" element={<Placeholder title="Booking Pages" />} />
                     <Route path="trainers" element={<Placeholder title="Trainers" />} />

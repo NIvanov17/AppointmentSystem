@@ -105,7 +105,7 @@ export default function RegisterService() {
             .then((res) => {
                 if (!res.ok) {
                     return res.json().catch(() => ({})).then((errData) => {
-                        throw new Error(errData.message || `Service registration failed (${res.status})`);
+                        throw new Error(errData.message || `Service registration failed (${res.message})`);
                     });
                 }
                 return res.text();
