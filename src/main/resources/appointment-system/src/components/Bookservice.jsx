@@ -1,189 +1,45 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Search, Filter, Clock, DollarSign, ChevronRight, Calendar, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { auth } from "../auth/token";
 
-// --- Mock Data ---
-const MOCK_SERVICES = [
-    {
-        id: "svc-1",
-        title: "Personal Training Session",
-        description:
-            "1-on-1 session focused on strength, mobility, and form corrections. Includes a warm-up and cooldown plan.",
-        durationMins: 60,
-        price: 49,
-        category: "Strength",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-2",
-        title: "HIIT Blast",
-        description:
-            "High-intensity interval training to boost endurance and burn calories. Suitable for intermediate levels.",
-        durationMins: 45,
-        price: 35,
-        category: "Cardio",
-        trainerId: "tr-2",
-    },
-    {
-        id: "svc-3",
-        title: "Mobility & Stretch",
-        description:
-            "Gentle guided mobility work and assisted stretching to improve flexibility and reduce soreness.",
-        durationMins: 30,
-        price: 25,
-        category: "Recovery",
-        trainerId: "tr-3",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-5",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-6",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-7",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-    {
-        id: "svc-4",
-        title: "Small Group Training",
-        description:
-            "Fun, social workout for up to 5 people. Strength + conditioning circuit led by a coach.",
-        durationMins: 50,
-        price: 29,
-        category: "Group",
-        trainerId: "tr-1",
-    },
-];
 
-const MOCK_TRAINERS = [
-    { id: "tr-1", name: "Alex Carter" },
-    { id: "tr-2", name: "Maya Lopez" },
-    { id: "tr-3", name: "Sam Fischer" },
-];
+const API_BASE = import.meta?.env?.VITE_API_BASE ?? "http://localhost:8080";
+const API = {
+    serviceTypes: () => `${API_BASE}/api/service-type`,
+    services: () => `${API_BASE}/api/service/all`,
+    providers: () => `${API_BASE}/api/all-providers`,
+};
 
-const CATEGORIES = ["All", "Strength", "Cardio", "Recovery", "Group"];
+async function apiFetch(url, init = {}) {
+    const token = auth.get?.();
+    const headers = {
+        "Content-Type": "application/json",
+        ...(init.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
 
-// --- Utilities ---
-const cx = (...classes) => classes.filter(Boolean).join(" ");
+    const res = await fetch(url, { ...init, headers });
 
-// --- Time Slots (Mock availability) ---
-const BASE_SLOTS = [
-    "06:00", "06:30", "07:00", "07:30",
-    "08:00", "08:30", "09:00", "09:30",
-    "17:00", "17:30", "18:00", "18:30",
-    "19:00", "19:30",
-];
 
-function getMockSlots(dateStr) {
-    // simple mock: weekends have fewer slots
-    if (!dateStr) return [];
-    const d = new Date(dateStr + "T00:00:00");
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-    return BASE_SLOTS.filter((_, idx) => (isWeekend ? idx % 2 === 0 : true));
+    if (!res.ok) {
+        let body;
+        try { body = await res.text(); } catch { body = ""; }
+        console.error(`[apiFetch] ${res.status} ${url}`, body);
+    }
+
+    if (res.status === 401) {
+        auth.clear?.();
+        console.warn("[apiFetch] 401 Unauthorized. Token cleared.");
+    }
+
+    return res;
 }
 
-// --- Components ---
+
+const cx = (...c) => c.filter(Boolean).join(" ");
+const DEFAULT_CATEGORIES = ["All"];
+
 function PageHeader({ onReset }) {
     return (
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -201,7 +57,7 @@ function PageHeader({ onReset }) {
     );
 }
 
-function Filters({ query, setQuery, category, setCategory, trainer, setTrainer }) {
+function Filters({ query, setQuery, category, setCategory, trainer, setTrainer, categories, trainers, disabled }) {
     return (
         <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-12">
             <div className="sm:col-span-6">
@@ -211,7 +67,8 @@ function Filters({ query, setQuery, category, setCategory, trainer, setTrainer }
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Search services..."
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-sky-200/60 focus:ring"
+                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-sky-200/60 focus:ring disabled:opacity-60"
+                        disabled={disabled}
                     />
                 </div>
             </div>
@@ -220,12 +77,11 @@ function Filters({ query, setQuery, category, setCategory, trainer, setTrainer }
                 <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring focus:ring-sky-200/60"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring focus:ring-sky-200/60 disabled:opacity-60"
+                    disabled={disabled}
                 >
-                    {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                            {c}
-                        </option>
+                    {(categories?.length ? categories : DEFAULT_CATEGORIES).map((c) => (
+                        <option key={c} value={c}>{c}</option>
                     ))}
                 </select>
             </div>
@@ -234,13 +90,12 @@ function Filters({ query, setQuery, category, setCategory, trainer, setTrainer }
                 <select
                     value={trainer}
                     onChange={(e) => setTrainer(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring focus:ring-sky-200/60"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring focus:ring-sky-200/60 disabled:opacity-60"
+                    disabled={disabled}
                 >
                     <option value="All">All Trainers</option>
-                    {MOCK_TRAINERS.map((t) => (
-                        <option key={t.id} value={t.id}>
-                            {t.name}
-                        </option>
+                    {trainers.map((t) => (
+                        <option key={t.id ?? t.name} value={t.id ?? t.name}>{t.name}</option>
                     ))}
                 </select>
             </div>
@@ -259,16 +114,22 @@ function ServiceCard({ svc, trainer, onBook }) {
         >
             <div className="mb-2 flex items-start justify-between gap-4">
                 <h3 className="text-base font-semibold text-slate-800">{svc.title}</h3>
-                <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">{svc.category}</span>
+                {svc.category && (
+                    <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">{svc.category}</span>
+                )}
             </div>
-            <p className="mb-4 line-clamp-3 text-sm text-slate-600">{svc.description}</p>
+            {svc.description && <p className="mb-4 line-clamp-3 text-sm text-slate-600">{svc.description}</p>}
             <div className="mt-auto flex items-center justify-between">
                 <div className="flex items-center gap-4 text-sm text-slate-600">
-                    <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />{svc.durationMins} mins</span>
-                    <span className="inline-flex items-center gap-1"><DollarSign className="h-4 w-4" />{svc.price}</span>
+                    {svc.durationMins != null && (
+                        <span className="inline-flex items-center gap-1"><Clock className="h-4 w-4" />{svc.durationMins} mins</span>
+                    )}
+                    {svc.price != null && (
+                        <span className="inline-flex items-center gap-1"><DollarSign className="h-4 w-4" />{svc.price}</span>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">by {trainer?.name}</span>
+                    {trainer?.name && <span className="text-xs text-slate-500">by {trainer.name}</span>}
                     <button
                         onClick={() => onBook(svc)}
                         className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-sky-600"
@@ -281,14 +142,14 @@ function ServiceCard({ svc, trainer, onBook }) {
     );
 }
 
-function BookingDrawer({ open, onClose, service }) {
+function BookingDrawer({ open, onClose, service, trainersById }) {
     const [date, setDate] = useState("");
     const [slot, setSlot] = useState("");
 
-    const slots = useMemo(() => getMockSlots(date), [date]);
-    const trainer = MOCK_TRAINERS.find((t) => t.id === service?.trainerId);
+    const trainer = service ? trainersById[service.trainerId] : null;
 
     function confirm() {
+        // TODO: Call POST /api/appointments when your endpoint is ready.
         if (!date || !slot) return alert("Please select date and time.");
         alert(`Booked: ${service.title} on ${date} at ${slot}`);
         onClose();
@@ -306,7 +167,6 @@ function BookingDrawer({ open, onClose, service }) {
                         className="fixed inset-0 z-40 bg-black/20"
                         onClick={onClose}
                     />
-
                     <motion.aside
                         key="drawer"
                         initial={{ x: "100%" }}
@@ -318,14 +178,13 @@ function BookingDrawer({ open, onClose, service }) {
                         <div className="mb-4 flex items-start justify-between">
                             <div>
                                 <h3 className="text-lg font-semibold text-slate-800">Book: {service?.title}</h3>
-                                <p className="text-xs text-slate-500">with {trainer?.name} • {service?.durationMins} mins • ${service?.price}
+                                <p className="text-xs text-slate-500">
+                                    {trainer?.name ? `with ${trainer.name} • ` : ""}
+                                    {service?.durationMins ? `${service.durationMins} mins • ` : ""}
+                                    {service?.price != null ? `$${service.price}` : ""}
                                 </p>
                             </div>
-                            <button
-                                className="rounded-full p-2 text-slate-500 hover:bg-slate-50"
-                                onClick={onClose}
-                                aria-label="Close"
-                            >
+                            <button className="rounded-full p-2 text-slate-500 hover:bg-slate-50" onClick={onClose} aria-label="Close">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
@@ -346,42 +205,33 @@ function BookingDrawer({ open, onClose, service }) {
                                 />
                             </div>
 
-                            <div>
-                                <p className="mb-2 text-sm font-medium text-slate-700">Available time slots</p>
-                                {date ? (
-                                    slots.length ? (
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {slots.map((s) => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => setSlot(s)}
-                                                    className={cx(
-                                                        "rounded-xl border px-3 py-2 text-sm",
-                                                        slot === s
-                                                            ? "border-sky-500 bg-sky-50 text-sky-700"
-                                                            : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                                                    )}
-                                                >
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                                            No slots for this date.
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-                                        Choose a date to see available times.
+                            {/* Replace with real availability when endpoint is ready */}
+                            {!!date && (
+                                <div>
+                                    <p className="mb-2 text-sm font-medium text-slate-700">Available time slots</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"].map((s) => (
+                                            <button
+                                                key={s}
+                                                onClick={() => setSlot(s)}
+                                                className={cx(
+                                                    "rounded-xl border px-3 py-2 text-sm",
+                                                    slot === s ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                )}
+                                            >
+                                                {s}
+                                            </button>
+                                        ))}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                             <div className="pt-2">
                                 <button
                                     onClick={confirm}
-                                    className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-sky-600"
+                                    disabled={!date || !slot}
+                                    className={cx("w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm",
+                                        !date || !slot ? "bg-slate-400" : "bg-sky-500 hover:bg-sky-600")}
                                 >
                                     Confirm Booking
                                 </button>
@@ -394,26 +244,102 @@ function BookingDrawer({ open, onClose, service }) {
     );
 }
 
+// ---------------- Page: data wiring ----------------
 export default function BookServicePage() {
-    // Filters state
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
     const [trainer, setTrainer] = useState("All");
 
-    // Booking drawer state
     const [open, setOpen] = useState(false);
     const [selectedService, setSelectedService] = useState(null);
 
-    const filtered = useMemo(() => {
-        return MOCK_SERVICES.filter((s) => {
-            const matchesQuery = [s.title, s.description].some((v) =>
-                v.toLowerCase().includes(query.toLowerCase())
-            );
-            const matchesCat = category === "All" || s.category === category;
-            const matchesTrainer = trainer === "All" || s.trainerId === trainer;
-            return matchesQuery && matchesCat && matchesTrainer;
-        });
-    }, [query, category, trainer]);
+    const [services, setServices] = useState([]);
+    const [categories, setCategories] = useState(["All"]);
+    const [trainers, setTrainers] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [err, setErr] = useState("");
+
+    // Load categories (service types)
+    useEffect(() => {
+        (async () => {
+            try {
+                // CHANGE: use apiFetch so Authorization header is added
+                const res = await apiFetch(API.serviceTypes());
+                if (res.ok) {
+                    const types = await res.json(); // ["STRENGTH","CARDIO",...]
+                    const pretty = types.map((t) => t.charAt(0) + t.slice(1).toLowerCase());
+                    setCategories(["All", ...pretty]);
+                }
+            } catch (e) {
+                console.error("service-type load error", e); // CHANGE: better visibility
+            }
+        })();
+    }, []);
+
+    // Load services & providers
+    useEffect(() => {
+        let abort = false;
+        (async () => {
+            setLoading(true);
+            setErr("");
+            try {
+                // CHANGE: use apiFetch for both requests
+                const [svcRes, provRes] = await Promise.allSettled([
+                    apiFetch(API.services()),
+                    apiFetch(API.providers()),
+                ]);
+
+                let svcList = [];
+                if (svcRes.status === "fulfilled" && svcRes.value.ok) {
+                    const raw = await svcRes.value.json(); // List<ServiceDTO>
+                    // Map backend fields -> UI fields
+                    svcList = raw.map((s) => ({
+                        id: s.serviceId,
+                        title: s.name,
+                        description: s.description,
+                        price: s.price,
+                        durationMins: s.duration,
+                        category: s.serviceType ? (String(s.serviceType).charAt(0) + String(s.serviceType).slice(1).toLowerCase()) : "",
+                        // prefer flattened providerId; fallback to s.provider?.id if present
+                        trainerId: s.providerId ?? s.provider?.id ?? null,
+                        trainerName: (s.providerFirstName && s.providerLastName)
+                            ? `${s.providerFirstName} ${s.providerLastName}`
+                            : (s.provider ? `${s.provider.firstName ?? ""} ${s.provider.lastName ?? ""}`.trim() : ""),
+                    }));
+                }
+
+                // Trainers list
+                let trainerList = [];
+                if (provRes.status === "fulfilled" && provRes.value.ok) {
+                    const raw = await provRes.value.json(); // [{id, firstName, lastName}]
+                    trainerList = raw.map((p) => ({
+                        id: p.id, // may be undefined until you add it in backend fix
+                        name: [p.firstName, p.lastName].filter(Boolean).join(" "),
+                    }));
+                }
+
+                // If provider endpoint lacks ids, derive trainers from services (name only)
+                if (!trainerList.length && svcList.length) {
+                    const byName = new Map();
+                    svcList.forEach((s) => {
+                        const name = s.trainerName || "Unknown";
+                        if (!byName.has(name)) byName.set(name, { id: s.trainerId ?? name, name });
+                    });
+                    trainerList = [...byName.values()];
+                }
+
+                if (!abort) {
+                    setServices(svcList);
+                    setTrainers(trainerList);
+                }
+            } catch (e) {
+                if (!abort) setErr(e.message || "Failed to load data.");
+            } finally {
+                if (!abort) setLoading(false);
+            }
+        })();
+        return () => { abort = true; };
+    }, []);
 
     function handleReset() {
         setQuery("");
@@ -426,6 +352,28 @@ export default function BookServicePage() {
         setOpen(true);
     }
 
+    const trainersById = useMemo(() => {
+        const map = {};
+        trainers.forEach((t) => { map[t.id ?? t.name] = t; });
+        return map;
+    }, [trainers]);
+
+    // Filters (client-side because endpoints don’t accept filters yet)
+    const filtered = useMemo(() => {
+        return services.filter((s) => {
+            const matchesQuery = [s.title, s.description].some((v) =>
+                (v ?? "").toLowerCase().includes(query.toLowerCase())
+            );
+            const matchesCat = category === "All" || s.category === category;
+            const matchesTrainer =
+                trainer === "All" ||
+                s.trainerId === trainer ||
+                trainersById[s.trainerId]?.name === trainersById[trainer]?.name || // when ids missing
+                s.trainerName === trainersById[trainer]?.name;
+            return matchesQuery && matchesCat && matchesTrainer;
+        });
+    }, [services, query, category, trainer, trainersById]);
+
     return (
         <div className="p-6">
             <PageHeader onReset={handleReset} />
@@ -436,19 +384,30 @@ export default function BookServicePage() {
                 setCategory={setCategory}
                 trainer={trainer}
                 setTrainer={setTrainer}
+                categories={categories}
+                trainers={trainers}
+                disabled={loading}
             />
 
-            {filtered.length ? (
+            {err && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
+
+            {loading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-slate-50" />
+                    ))}
+                </div>
+            ) : filtered.length ? (
                 <motion.div layout className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <AnimatePresence>
                         {filtered.map((svc) => (
                             <ServiceCard
                                 key={svc.id}
                                 svc={svc}
-                                trainer={MOCK_TRAINERS.find((t) => t.id === svc.trainerId)}
+                                trainer={trainersById[svc.trainerId] ?? (svc.trainerName ? { name: svc.trainerName } : null)}
                                 onBook={handleBook}
-                            />)
-                        )}
+                            />
+                        ))}
                     </AnimatePresence>
                 </motion.div>
             ) : (
@@ -459,7 +418,12 @@ export default function BookServicePage() {
                 </div>
             )}
 
-            <BookingDrawer open={open} onClose={() => setOpen(false)} service={selectedService} />
+            <BookingDrawer
+                open={open}
+                onClose={() => setOpen(false)}
+                service={selectedService}
+                trainersById={trainersById}
+            />
         </div>
     );
 }
