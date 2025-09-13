@@ -70,7 +70,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/register/**", "/api/login").permitAll()
+                        .requestMatchers("/api/register/**", "/api/login", "api/service-types", "/api/register/service").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(provider)

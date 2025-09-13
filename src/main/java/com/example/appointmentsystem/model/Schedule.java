@@ -30,4 +30,8 @@ public class Schedule  {
     @ManyToOne
     @JoinColumn(name = "provider_id")
     private User provider;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "service_id", nullable = false)
+    private Service service;
 }

@@ -51,4 +51,15 @@ public class UserService {
                 .orElseThrow(()->new IllegalArgumentException("User not found"));
     }
 
+    public void registerProvider(RegisterClientDTO dto) {
+        User user = new User();
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhoneNumber());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setRole(Role.PROVIDER);
+
+        userRepository.save(user);
+    }
 }
