@@ -53,6 +53,15 @@ public class UserApi {
         return ResponseEntity.status(HttpStatus.CREATED).body("Client registered successfully");
     }
 
+    @PostMapping("/api/register/provider")
+    public ResponseEntity<String> registerProvider(@RequestBody() RegisterClientDTO dto) {
+        if (userService.isEmailExist(dto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+        userService.registerProvider(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body("Client registered successfully");
+    }
+
     @PostMapping("/api/login")
     public ResponseEntity<JwtResponse> login(@RequestBody LoginDTO dto) {
         try {

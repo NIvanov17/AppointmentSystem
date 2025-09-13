@@ -10,10 +10,6 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "services")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Service {
 
     @Id
@@ -41,4 +37,73 @@ public class Service {
     @ManyToOne
     @JoinColumn(name = "provider_id")
     private User provider;
+
+    public Service() {
+    }
+
+    public Service(long id, ServiceType serviceType, String name, String description, Double price, Integer durationMinutes, User provider) {
+        this.id = id;
+        this.serviceType = serviceType;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.durationMinutes = durationMinutes;
+        this.provider = provider;
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public ServiceType getServiceType() {
+        return serviceType;
+    }
+
+    public void setServiceType(ServiceType serviceType) {
+        this.serviceType = serviceType;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public @Positive Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(@Positive Double price) {
+        this.price = price;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public User getProvider() {
+        return provider;
+    }
+
+    public void setProvider(User provider) {
+        this.provider = provider;
+    }
 }
