@@ -34,8 +34,8 @@ export default function App() {
                 <Route path="/app/providers" element={<Providers />}>
                     <Route index element={<Navigate to="appointment-providers" replace />} />
                     <Route path="appointment-providers" element={<AppointmentsProviders />} />
-                    <Route path="workout-sessions" element={<Placeholder title="Workout Sessions" />} />
-                    <Route path="workflows" element={<Placeholder title="Workflows" />} />
+                    <Route path="services" element={<Placeholder title="Services" />} />
+                    <Route path="home" element={<Placeholder title="Home" />} />
                     <Route path="booking-pages" element={<Placeholder title="Booking Pages" />} />
                     <Route path="trainers" element={<Placeholder title="Trainers" />} />
                     <Route path="settings" element={<Placeholder title="Settings" />} />
@@ -46,8 +46,8 @@ export default function App() {
                 <Route path="/app/clients" element={<Providers />}>
                     <Route index element={<Navigate to="appointments" replace />} />
                     <Route path="appointments" element={<AppointmentsPage />} />
-                    <Route path="workout-sessions" element={<BookService />} />
-                    <Route path="workflows" element={<Placeholder title="Workflows" />} />
+                    <Route path="services" element={<BookService />} />
+                    <Route path="home" element={<Placeholder title="Home" />} />
                     <Route path="booking-pages" element={<Placeholder title="Booking Pages" />} />
                     <Route path="trainers" element={<Placeholder title="Trainers" />} />
                     <Route path="settings" element={<Placeholder title="Settings" />} />

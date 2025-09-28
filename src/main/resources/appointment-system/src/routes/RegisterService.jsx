@@ -39,7 +39,7 @@ export default function RegisterService() {
     useEffect(() => {
         let isMounted = true;
         setLoadingTypes(true);
-        fetch("http://localhost:8080/api/service-types")
+        fetch("http://localhost:8080/api/service-type")
             .then((res) => {
                 if (!res.ok) throw new Error(`Failed to load service types (${res.status})`);
                 return res.json();

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Filter, Clock, DollarSign, ChevronRight, Calendar, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Filter, Clock, DollarSign, ChevronRight, Calendar, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth } from "../auth/token";
 
@@ -8,6 +9,8 @@ const API_BASE = import.meta?.env?.VITE_API_BASE ?? "http://localhost:8080";
 const API = {
     serviceTypes: () => `${API_BASE}/api/service-type`,
     services: () => `${API_BASE}/api/service/all`,
+    availableSlots: () => `${API_BASE}/api/appointments/available-slots`,
+    appointment: () => `${API_BASE}/api/appointment`,
     providers: () => `${API_BASE}/api/all-providers`,
 };
 
@@ -35,6 +38,14 @@ async function apiFetch(url, init = {}) {
 
     return res;
 }
+
+function toIsoStartAt(date, timeHHmm) {
+    const [h, m] = timeHHmm.split(":").map(Number);
+    const d = new Date(`${date}T00:00:00`);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString(); // ISO-8601 with Z (UTC)
+}
+
 
 
 const cx = (...c) => c.filter(Boolean).join(" ");
@@ -141,103 +152,408 @@ function ServiceCard({ svc, trainer, onBook }) {
         </motion.div>
     );
 }
+function resolveProviderId(service, trainersById) {
+    if (!service) return null;
+
+    // direct fields from service
+    const direct =
+        service.trainerId ??
+        service.providerId ??
+        (service.provider && service.provider.id);
+
+    if (direct != null) return direct;
+
+    // try to match by trainerName in trainersById map
+    if (service.trainerName && trainersById) {
+        // exact id key match first (some lists use name as id when missing)
+        if (trainersById[service.trainerName]?.id != null) {
+            return trainersById[service.trainerName].id;
+        }
+        // search by name
+        const match = Object.values(trainersById).find(
+            (t) => t && t.name === service.trainerName
+        );
+        if (match?.id != null) return match.id;
+    }
+
+    return null;
+}
 
 function BookingDrawer({ open, onClose, service, trainersById }) {
+    const [successOpen, setSuccessOpen] = useState(false);
     const [date, setDate] = useState("");
     const [slot, setSlot] = useState("");
 
-    const trainer = service ? trainersById[service.trainerId] : null;
+    const [slots, setSlots] = useState([]);          // e.g. ["09:00","09:30",...]
+    const [loadingSlots, setLoadingSlots] = useState(false);
+    const [slotsError, setSlotsError] = useState("");
 
-    function confirm() {
-        // TODO: Call POST /api/appointments when your endpoint is ready.
-        if (!date || !slot) return alert("Please select date and time.");
-        alert(`Booked: ${service.title} on ${date} at ${slot}`);
-        onClose();
+    const [booking, setBooking] = useState(false);
+    const [bookingError, setBookingError] = useState("");
+
+    // keep your derivation; some services bring providerId as trainerId in your UI mapping
+    const providerId = resolveProviderId(service, trainersById);
+    const durationMinutes = service?.durationMinutes ?? service?.durationMins;
+
+    // ---- helpers for filtering past slots (today only) ----
+    const todayISO = new Date().toISOString().split("T")[0];
+
+    function slotToMinutes(s) {
+        // supports "HH:MM" or "HH:MM:SS"
+        const [hh = "0", mm = "0"] = s.split(":");
+        return parseInt(hh, 10) * 60 + parseInt(mm, 10);
     }
+
+    const filteredSlots = React.useMemo(() => {
+        if (!Array.isArray(slots) || slots.length === 0) return [];
+        if (!date || date !== todayISO) return slots;
+
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+        // keep only slots strictly after "now"
+        return slots.filter((s) => slotToMinutes(s) > nowMinutes);
+    }, [slots, date, todayISO]);
+
+    // if a previously selected slot is no longer available (e.g., became "past"), clear it
+    useEffect(() => {
+        if (slot && !filteredSlots.includes(slot)) {
+            setSlot("");
+        }
+    }, [filteredSlots, slot]);
+
+    // ---- AVAILABILITY FETCH (refactored to use API map + apiFetch) ----
+    useEffect(() => {
+        if (!open || !date || !service?.id) {
+            setSlots([]);
+            setSlotsError("");
+            return;
+        }
+
+        const controller = new AbortController();
+
+        (async () => {
+            try {
+                setLoadingSlots(true);
+                setSlotsError("");
+                setSlot("");
+
+                const params = new URLSearchParams({
+                    serviceId: String(service.id),
+                    date, // "YYYY-MM-DD"
+                    t: String(Date.now()),
+                });
+
+                // CHANGE: use apiFetch to auto-attach Authorization header
+                const res = await apiFetch(`${API.availableSlots()}?${params.toString()}`, {
+                    method: "GET",
+                    signal: controller.signal,
+                    headers: { Accept: "application/json" },
+                    cache: "no-store",
+                });
+
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || `Failed to load slots (${res.status})`);
+                }
+
+                const data = await res.json(); // { slots: [...] }
+                setSlots(Array.isArray(data.slots) ? data.slots : []);
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    setSlotsError(err.message || "Could not load availability.");
+                }
+            } finally {
+                setLoadingSlots(false);
+            }
+        })();
+
+        return () => controller.abort();
+    }, [date, service?.id, open]);
+
+    // ---- BOOKING POST (refactored to use API map + apiFetch) ----
+    async function confirm() {
+        if (!date || !slot) {
+            alert("Please select date and time.");
+            return;
+        }
+
+        console.log("[confirm] service:", service);
+        console.log("[confirm] trainersById:", trainersById);
+        console.log("[confirm] resolved providerId:", providerId);
+        if (service?.id == null || providerId == null) {
+            alert("Missing service/provider info.");
+            return;
+        }
+
+        try {
+            setBooking(true);
+            setBookingError("");
+
+            // If your backend takes clientId from JWT, we omit it.
+            // If you can read it from your auth helper, include it.
+            const maybeClientId =
+                typeof auth?.getUserId === "function" ? auth.getUserId() : undefined;
+
+            const startAt = `${date}T${slot}:00`; // build ISO time from date+slot
+            console.debug("[confirm] service:", service);
+            console.debug("[confirm] providerId:", providerId);
+
+            const payload = {
+                serviceId: service.id,
+                providerId,
+                startAt,
+                ...(maybeClientId ? { clientId: maybeClientId } : {}), // include only if available
+            };
+
+            const res = await apiFetch(API.appointment(), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || `Booking failed (${res.status})`);
+            }
+
+            onClose?.();
+            setSuccessOpen(true); // ✅ show success popup
+        } catch (err) {
+            setBookingError(err.message || "Booking failed.");
+        } finally {
+            setBooking(false);
+        }
+    }
+
+    return (
+        <>
+            <AnimatePresence>
+                {open && (
+                    <>
+                        <motion.div
+                            key="backdrop"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-40 bg-black/20"
+                            onClick={onClose}
+                        />
+                        <motion.aside
+                            key="drawer"
+                            initial={{ x: "100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "100%" }}
+                            transition={{ type: "spring", stiffness: 260, damping: 30 }}
+                            className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-xl"
+                        >
+                            <div className="mb-4 flex items-start justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">
+                                        Book: {service?.title ?? service?.name}
+                                    </h3>
+                                    <p className="text-xs text-slate-500">
+                                        {durationMinutes ? `${durationMinutes} mins` : ""}
+                                        {service?.price != null ? ` • $${service.price}` : ""}
+                                    </p>
+                                </div>
+                                <button
+                                    className="rounded-full p-2 text-slate-500 hover:bg-slate-50"
+                                    onClick={onClose}
+                                    aria-label="Close"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-700">
+                                        <Calendar className="h-4 w-4" /> Select a date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={date}
+                                        min={todayISO}
+                                        onChange={(e) => {
+                                            setDate(e.target.value);
+                                            setSlot("");
+                                        }}
+                                        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-200/60"
+                                    />
+                                </div>
+
+                                {!!date && (
+                                    <div>
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <p className="text-sm font-medium text-slate-700">Available time slots</p>
+                                            {loadingSlots && <span className="text-xs text-slate-500">Loading…</span>}
+                                        </div>
+
+                                        {slotsError && (
+                                            <div className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                                                {slotsError}
+                                            </div>
+                                        )}
+
+                                        {!loadingSlots && !slotsError && filteredSlots.length === 0 && (
+                                            <p className="text-sm text-slate-500">
+                                                {date === todayISO
+                                                    ? "No future time slots left today."
+                                                    : "No free time slots for this date."}
+                                            </p>
+                                        )}
+
+                                        {!loadingSlots && !slotsError && filteredSlots.length > 0 && (
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {filteredSlots.map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => setSlot(s)}
+                                                        className={cx(
+                                                            "rounded-xl border px-3 py-2 text-sm",
+                                                            slot === s
+                                                                ? "border-sky-500 bg-sky-50 text-sky-700"
+                                                                : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {bookingError && (
+                                    <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                                        {bookingError}
+                                    </div>
+                                )}
+
+                                <div className="pt-2">
+                                    <button
+                                        onClick={confirm}
+                                        disabled={!date || !slot || booking || loadingSlots || !!slotsError}
+                                        className={cx(
+                                            "w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm",
+                                            !date || !slot || booking || loadingSlots || !!slotsError
+                                                ? "bg-slate-400"
+                                                : "bg-sky-500 hover:bg-sky-600"
+                                        )}
+                                    >
+                                        {booking ? "Booking…" : "Confirm Booking"}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ✅ Success popup lives outside the drawer */}
+            <SuccessDialog
+                open={successOpen}
+                onClose={() => setSuccessOpen(false)}
+                redirectTo="/app/clients/appointments"  // change if your route is different
+                delayMs={2500}                           // 2.5s auto-redirect
+            />
+        </>
+    );
+}
+
+
+function SuccessDialog({ open, onClose, redirectTo = "/app/clients/appointments", delayMs = 2500 }) {
+    const navigate = useNavigate();
+    const [progress, setProgress] = useState(0);
+
+    useEffect(() => {
+        if (!open) return;
+        let start = performance.now();
+        let raf = 0;
+
+        const tick = (t) => {
+            const pct = Math.min(1, (t - start) / delayMs);
+            setProgress(pct);
+            if (pct < 1) raf = requestAnimationFrame(tick);
+            else {
+                onClose?.();
+                navigate(redirectTo);
+            }
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, [open, delayMs, redirectTo, navigate, onClose]);
+
+    const deg = Math.round(progress * 360);
 
     return (
         <AnimatePresence>
             {open && (
                 <>
                     <motion.div
-                        key="backdrop"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-40 bg-black/20"
-                        onClick={onClose}
+                        className="fixed inset-0 z-[60] bg-black/40"
                     />
-                    <motion.aside
-                        key="drawer"
-                        initial={{ x: "100%" }}
-                        animate={{ x: 0 }}
-                        exit={{ x: "100%" }}
-                        transition={{ type: "spring", stiffness: 260, damping: 30 }}
-                        className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto border-l border-slate-200 bg-white p-5 shadow-xl"
+                    <motion.div
+                        initial={{ y: 40, opacity: 0, scale: 0.98 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        exit={{ y: 20, opacity: 0, scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                        className="fixed inset-0 z-[70] grid place-items-center p-4"
                     >
-                        <div className="mb-4 flex items-start justify-between">
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-800">Book: {service?.title}</h3>
-                                <p className="text-xs text-slate-500">
-                                    {trainer?.name ? `with ${trainer.name} • ` : ""}
-                                    {service?.durationMins ? `${service.durationMins} mins • ` : ""}
-                                    {service?.price != null ? `$${service.price}` : ""}
-                                </p>
-                            </div>
-                            <button className="rounded-full p-2 text-slate-500 hover:bg-slate-50" onClick={onClose} aria-label="Close">
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-5">
-                            <div>
-                                <label className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-700">
-                                    <Calendar className="h-4 w-4" /> Select a date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={date}
-                                    onChange={(e) => {
-                                        setDate(e.target.value);
-                                        setSlot("");
+                        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+                            <div className="mx-auto mb-4 grid place-items-center">
+                                <div
+                                    className="relative grid place-items-center rounded-full p-1"
+                                    style={{
+                                        width: 96,
+                                        height: 96,
+                                        backgroundImage: `conic-gradient(currentColor ${deg}deg, #e5e7eb ${deg}deg)`,
+                                        color: "rgb(14 165 233)", // tailwind sky-500
                                     }}
-                                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-200/60"
-                                />
-                            </div>
-
-                            {/* Replace with real availability when endpoint is ready */}
-                            {!!date && (
-                                <div>
-                                    <p className="mb-2 text-sm font-medium text-slate-700">Available time slots</p>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"].map((s) => (
-                                            <button
-                                                key={s}
-                                                onClick={() => setSlot(s)}
-                                                className={cx(
-                                                    "rounded-xl border px-3 py-2 text-sm",
-                                                    slot === s ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                                                )}
-                                            >
-                                                {s}
-                                            </button>
-                                        ))}
+                                >
+                                    <div className="grid place-items-center rounded-full bg-white" style={{ width: 80, height: 80 }}>
+                                        <motion.div
+                                            initial={{ scale: 0, rotate: -15, opacity: 0 }}
+                                            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                                            transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+                                            className="grid place-items-center rounded-full bg-sky-50"
+                                            style={{ width: 64, height: 64 }}
+                                        >
+                                            <Check className="h-9 w-9 text-sky-600" strokeWidth={2.5} />
+                                        </motion.div>
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
-                            <div className="pt-2">
+                            <h4 className="text-center text-lg font-semibold text-slate-800">Appointment confirmed</h4>
+                            <p className="mt-1 text-center text-sm text-slate-600">
+                                You’ll be redirected to <span className="font-medium">My Appointments</span> in a moment…
+                            </p>
+
+                            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                <div className="h-full bg-sky-500 transition-[width] duration-100" style={{ width: `${progress * 100}%` }} />
+                            </div>
+
+                            <div className="mt-4 flex justify-center">
                                 <button
-                                    onClick={confirm}
-                                    disabled={!date || !slot}
-                                    className={cx("w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm",
-                                        !date || !slot ? "bg-slate-400" : "bg-sky-500 hover:bg-sky-600")}
+                                    onClick={() => {
+                                        onClose?.();
+                                        navigate(redirectTo);
+                                    }}
+                                    className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600"
                                 >
-                                    Confirm Booking
+                                    Go now
                                 </button>
                             </div>
                         </div>
-                    </motion.aside>
+                    </motion.div>
                 </>
             )}
         </AnimatePresence>

@@ -1,4 +1,4 @@
-import { Menu, Calendar, Users, Settings, ClipboardList, Book, User } from "lucide-react";
+import { Menu, Calendar, Users, Settings, ClipboardList, Book, User, Home } from "lucide-react";
 import NavItem from "./NavItem";
 import { auth } from "../auth/token"
 
@@ -6,6 +6,8 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
     const role = auth.getRole() || "";
     const base = role === "PROVIDER" ? "/app/providers" : "/app/clients";
     const APPOINTMENTS_SEG = role === "PROVIDER" ? "appointment-providers" : "appointments";
+    const email = auth.profile()?.email || "";
+    const firstLetter = email ? email.charAt(0).toUpperCase() : "?";
 
     return (
         <aside
@@ -14,7 +16,7 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
         >
             <div className="flex items-center justify-center mb-10">
                 <div className="w-12 h-12 rounded-full bg-sky-500 text-white flex items-center justify-center text-lg font-bold">
-                    TE
+                    {firstLetter}
                 </div>
             </div>
 
@@ -27,11 +29,8 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
 
             <nav className="space-y-2 text-gray-700">
                 <NavItem icon={<Calendar />} label="Appointments" path={`${base}/${APPOINTMENTS_SEG}`} sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Users />} label="Workout Sessions" path={`${base}/workout-sessions`} sidebarOpen={sidebarOpen} />
-                <NavItem icon={<ClipboardList />} label="Workflows" path={`${base}/workflows`} sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Book />} label="Booking Pages" path={`${base}/booking-pages`} sidebarOpen={sidebarOpen} />
-                <NavItem icon={<User />} label="Trainers" path={`${base}/trainers`} sidebarOpen={sidebarOpen} />
-                <NavItem icon={<Settings />} label="Settings" path={`${base}/settings`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Users />} label="Services" path={`${base}/services`} sidebarOpen={sidebarOpen} />
+                <NavItem icon={<Home />} label="Home" path="/" sidebarOpen={sidebarOpen} />
             </nav>
         </aside>
     );
