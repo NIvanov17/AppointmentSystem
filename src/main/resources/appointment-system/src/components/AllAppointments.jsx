@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { auth } from "../auth/token";
 
-// ----- API map -----
 const API_BASE = import.meta?.env?.VITE_API_BASE ?? "http://localhost:8080";
 const API = {
     allAppointments: () => `${API_BASE}/api/appointments/all`,
     deleteAppointment: (id) => `${API_BASE}/api/appointment/${id}`,
 };
 
-// ----- fetch helper that attaches JWT (reuses window.apiFetch if present) -----
 async function apiFetch(url, init = {}) {
     if (typeof window !== "undefined" && typeof window.apiFetch === "function") {
         return window.apiFetch(url, init);
@@ -131,14 +129,12 @@ export default function AllAppointments() {
 
     return (
         <div className="p-6">
-            {/* notice */}
             {notice && (
                 <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm transition">
                     {notice}
                 </div>
             )}
 
-            {/* header */}
             <div className="mb-5 flex items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-slate-900">Appointments</h1>
@@ -152,7 +148,6 @@ export default function AllAppointments() {
                 </div>
             </div>
 
-            {/* tabs */}
             <div role="tablist" aria-label="Appointment filters" className="mb-4">
                 <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
                     {TABS.map((t) => {
@@ -178,7 +173,6 @@ export default function AllAppointments() {
                 </div>
             </div>
 
-            {/* table / empty */}
             {rows.length === 0 ? (
                 activeTab === "upcoming" ? (
                     <Empty title="No upcoming appointments" note="New bookings will show up here." />
@@ -264,12 +258,9 @@ export default function AllAppointments() {
                 </div>
             )}
 
-            {/* confirmation modal */}
             {confirmId && (
                 <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    {/* backdrop */}
                     <div className="absolute inset-0 bg-slate-900/40" onClick={() => !deleting && setConfirmId(null)} />
-                    {/* panel */}
                     <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
                         <h3 className="text-lg font-semibold text-slate-900">Delete appointment?</h3>
                         <p className="mt-1 text-sm text-slate-600">
@@ -317,7 +308,7 @@ export default function AllAppointments() {
     );
 }
 
-/* ---- Small table helpers ---- */
+
 function Th({ children }) {
     return (
         <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">

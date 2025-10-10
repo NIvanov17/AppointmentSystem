@@ -39,13 +39,6 @@ async function apiFetch(url, init = {}) {
     return res;
 }
 
-function toIsoStartAt(date, timeHHmm) {
-    const [h, m] = timeHHmm.split(":").map(Number);
-    const d = new Date(`${date}T00:00:00`);
-    d.setHours(h, m, 0, 0);
-    return d.toISOString(); // ISO-8601 with Z (UTC)
-}
-
 
 
 const cx = (...c) => c.filter(Boolean).join(" ");
@@ -104,7 +97,7 @@ function Filters({ query, setQuery, category, setCategory, trainer, setTrainer, 
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring focus:ring-sky-200/60 disabled:opacity-60"
                     disabled={disabled}
                 >
-                    <option value="All">All Trainers</option>
+                    <option value="All">All Providers</option>
                     {trainers.map((t) => (
                         <option key={t.id ?? t.name} value={t.id ?? t.name}>{t.name}</option>
                     ))}
@@ -163,13 +156,10 @@ function resolveProviderId(service, trainersById) {
 
     if (direct != null) return direct;
 
-    // try to match by trainerName in trainersById map
     if (service.trainerName && trainersById) {
-        // exact id key match first (some lists use name as id when missing)
         if (trainersById[service.trainerName]?.id != null) {
             return trainersById[service.trainerName].id;
         }
-        // search by name
         const match = Object.values(trainersById).find(
             (t) => t && t.name === service.trainerName
         );
@@ -184,22 +174,19 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
     const [date, setDate] = useState("");
     const [slot, setSlot] = useState("");
 
-    const [slots, setSlots] = useState([]);          // e.g. ["09:00","09:30",...]
+    const [slots, setSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [slotsError, setSlotsError] = useState("");
 
     const [booking, setBooking] = useState(false);
     const [bookingError, setBookingError] = useState("");
 
-    // keep your derivation; some services bring providerId as trainerId in your UI mapping
     const providerId = resolveProviderId(service, trainersById);
     const durationMinutes = service?.durationMinutes ?? service?.durationMins;
 
-    // ---- helpers for filtering past slots (today only) ----
     const todayISO = new Date().toISOString().split("T")[0];
 
     function slotToMinutes(s) {
-        // supports "HH:MM" or "HH:MM:SS"
         const [hh = "0", mm = "0"] = s.split(":");
         return parseInt(hh, 10) * 60 + parseInt(mm, 10);
     }
@@ -211,18 +198,16 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
         const now = new Date();
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // keep only slots strictly after "now"
+
         return slots.filter((s) => slotToMinutes(s) > nowMinutes);
     }, [slots, date, todayISO]);
 
-    // if a previously selected slot is no longer available (e.g., became "past"), clear it
     useEffect(() => {
         if (slot && !filteredSlots.includes(slot)) {
             setSlot("");
         }
     }, [filteredSlots, slot]);
 
-    // ---- AVAILABILITY FETCH (refactored to use API map + apiFetch) ----
     useEffect(() => {
         if (!open || !date || !service?.id) {
             setSlots([]);
@@ -244,7 +229,6 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
                     t: String(Date.now()),
                 });
 
-                // CHANGE: use apiFetch to auto-attach Authorization header
                 const res = await apiFetch(`${API.availableSlots()}?${params.toString()}`, {
                     method: "GET",
                     signal: controller.signal,
@@ -257,7 +241,7 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
                     throw new Error(msg || `Failed to load slots (${res.status})`);
                 }
 
-                const data = await res.json(); // { slots: [...] }
+                const data = await res.json();
                 setSlots(Array.isArray(data.slots) ? data.slots : []);
             } catch (err) {
                 if (err.name !== "AbortError") {
@@ -271,7 +255,6 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
         return () => controller.abort();
     }, [date, service?.id, open]);
 
-    // ---- BOOKING POST (refactored to use API map + apiFetch) ----
     async function confirm() {
         if (!date || !slot) {
             alert("Please select date and time.");
@@ -290,12 +273,10 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
             setBooking(true);
             setBookingError("");
 
-            // If your backend takes clientId from JWT, we omit it.
-            // If you can read it from your auth helper, include it.
             const maybeClientId =
                 typeof auth?.getUserId === "function" ? auth.getUserId() : undefined;
 
-            const startAt = `${date}T${slot}:00`; // build ISO time from date+slot
+            const startAt = `${date}T${slot}:00`;
             console.debug("[confirm] service:", service);
             console.debug("[confirm] providerId:", providerId);
 
@@ -303,7 +284,7 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
                 serviceId: service.id,
                 providerId,
                 startAt,
-                ...(maybeClientId ? { clientId: maybeClientId } : {}), // include only if available
+                ...(maybeClientId ? { clientId: maybeClientId } : {}),
             };
 
             const res = await apiFetch(API.appointment(), {
@@ -321,7 +302,7 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
             }
 
             onClose?.();
-            setSuccessOpen(true); // ✅ show success popup
+            setSuccessOpen(true);
         } catch (err) {
             setBookingError(err.message || "Booking failed.");
         } finally {
@@ -454,12 +435,11 @@ function BookingDrawer({ open, onClose, service, trainersById }) {
                 )}
             </AnimatePresence>
 
-            {/* ✅ Success popup lives outside the drawer */}
             <SuccessDialog
                 open={successOpen}
                 onClose={() => setSuccessOpen(false)}
-                redirectTo="/app/clients/appointments"  // change if your route is different
-                delayMs={2500}                           // 2.5s auto-redirect
+                redirectTo="/app/clients/appointments"
+                delayMs={2500}
             />
         </>
     );
@@ -515,7 +495,7 @@ function SuccessDialog({ open, onClose, redirectTo = "/app/clients/appointments"
                                         width: 96,
                                         height: 96,
                                         backgroundImage: `conic-gradient(currentColor ${deg}deg, #e5e7eb ${deg}deg)`,
-                                        color: "rgb(14 165 233)", // tailwind sky-500
+                                        color: "rgb(14 165 233)",
                                     }}
                                 >
                                     <div className="grid place-items-center rounded-full bg-white" style={{ width: 80, height: 80 }}>
@@ -560,7 +540,6 @@ function SuccessDialog({ open, onClose, redirectTo = "/app/clients/appointments"
     );
 }
 
-// ---------------- Page: data wiring ----------------
 export default function BookServicePage() {
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
@@ -575,31 +554,27 @@ export default function BookServicePage() {
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState("");
 
-    // Load categories (service types)
     useEffect(() => {
         (async () => {
             try {
-                // CHANGE: use apiFetch so Authorization header is added
                 const res = await apiFetch(API.serviceTypes());
                 if (res.ok) {
-                    const types = await res.json(); // ["STRENGTH","CARDIO",...]
+                    const types = await res.json();
                     const pretty = types.map((t) => t.charAt(0) + t.slice(1).toLowerCase());
                     setCategories(["All", ...pretty]);
                 }
             } catch (e) {
-                console.error("service-type load error", e); // CHANGE: better visibility
+                console.error("service-type load error", e);
             }
         })();
     }, []);
 
-    // Load services & providers
     useEffect(() => {
         let abort = false;
         (async () => {
             setLoading(true);
             setErr("");
             try {
-                // CHANGE: use apiFetch for both requests
                 const [svcRes, provRes] = await Promise.allSettled([
                     apiFetch(API.services()),
                     apiFetch(API.providers()),
@@ -607,8 +582,7 @@ export default function BookServicePage() {
 
                 let svcList = [];
                 if (svcRes.status === "fulfilled" && svcRes.value.ok) {
-                    const raw = await svcRes.value.json(); // List<ServiceDTO>
-                    // Map backend fields -> UI fields
+                    const raw = await svcRes.value.json();
                     svcList = raw.map((s) => ({
                         id: s.serviceId,
                         title: s.name,
@@ -616,7 +590,6 @@ export default function BookServicePage() {
                         price: s.price,
                         durationMins: s.duration,
                         category: s.serviceType ? (String(s.serviceType).charAt(0) + String(s.serviceType).slice(1).toLowerCase()) : "",
-                        // prefer flattened providerId; fallback to s.provider?.id if present
                         trainerId: s.providerId ?? s.provider?.id ?? null,
                         trainerName: (s.providerFirstName && s.providerLastName)
                             ? `${s.providerFirstName} ${s.providerLastName}`
@@ -624,17 +597,16 @@ export default function BookServicePage() {
                     }));
                 }
 
-                // Trainers list
+
                 let trainerList = [];
                 if (provRes.status === "fulfilled" && provRes.value.ok) {
-                    const raw = await provRes.value.json(); // [{id, firstName, lastName}]
+                    const raw = await provRes.value.json();
                     trainerList = raw.map((p) => ({
-                        id: p.id, // may be undefined until you add it in backend fix
+                        id: p.id,
                         name: [p.firstName, p.lastName].filter(Boolean).join(" "),
                     }));
                 }
 
-                // If provider endpoint lacks ids, derive trainers from services (name only)
                 if (!trainerList.length && svcList.length) {
                     const byName = new Map();
                     svcList.forEach((s) => {
@@ -674,7 +646,6 @@ export default function BookServicePage() {
         return map;
     }, [trainers]);
 
-    // Filters (client-side because endpoints don’t accept filters yet)
     const filtered = useMemo(() => {
         return services.filter((s) => {
             const matchesQuery = [s.title, s.description].some((v) =>
@@ -684,7 +655,7 @@ export default function BookServicePage() {
             const matchesTrainer =
                 trainer === "All" ||
                 s.trainerId === trainer ||
-                trainersById[s.trainerId]?.name === trainersById[trainer]?.name || // when ids missing
+                trainersById[s.trainerId]?.name === trainersById[trainer]?.name ||
                 s.trainerName === trainersById[trainer]?.name;
             return matchesQuery && matchesCat && matchesTrainer;
         });

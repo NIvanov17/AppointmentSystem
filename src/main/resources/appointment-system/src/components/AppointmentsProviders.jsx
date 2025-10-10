@@ -1,285 +1,295 @@
-import React, { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Clock } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { auth } from "../auth/token";
 
-// --- Utilities -----------------------------------------------------------
-const fmtTime = (date) =>
-    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const API_BASE = import.meta?.env?.VITE_API_BASE ?? "http://localhost:8080";
+const API = {
+    allAppointments: () => `${API_BASE}/api/provider/appointments/all`,
+};
 
-const fmtDay = (date) =>
-    date.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
+async function apiFetch(url, init = {}) {
+    if (typeof window !== "undefined" && typeof window.apiFetch === "function") {
+        return window.apiFetch(url, init);
+    }
+    const token = auth?.get?.();
+    const headers = {
+        "Content-Type": "application/json",
+        ...(init.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const res = await fetch(url, { ...init, headers });
+    if (!res.ok) {
+        let body = "";
+        try {
+            body = await res.text();
+        } catch { }
+        console.error(`[apiFetch] ${res.status} ${url}`, body);
+    }
+    if (res.status === 401) {
+        auth?.clear?.();
+        console.warn("[apiFetch] 401 Unauthorized. Token cleared.");
+    }
+    return res;
+}
 
-const isPast = (a, now = new Date()) => new Date(a.end) < now;
+async function getAllAppointments(signal) {
+    const url = `${API.allAppointments()}?t=${Date.now()}`;
+    const res = await apiFetch(url, {
+        method: "GET",
+        signal,
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+    });
+    if (!res.ok) throw new Error((await res.text()) || `Error ${res.status}`);
+    return res.json();
+}
 
-// --- Tiny UI Atoms -------------------------------------------------------
-const Badge = ({ children, tone = "slate" }) => (
-    <span
-        className={
-            `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border ` +
-            {
-                slate: "bg-slate-50 text-slate-700 border-slate-200",
-                green: "bg-green-50 text-green-700 border-green-200",
-                red: "bg-rose-50 text-rose-700 border-rose-200",
-                amber: "bg-amber-50 text-amber-700 border-amber-200",
-                violet: "bg-violet-50 text-violet-700 border-violet-200",
-            }[tone]
+const fmtDateTime = (dt) =>
+    new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+        new Date(dt)
+    );
+
+const fmtPrice = (n) =>
+    typeof n === "number"
+        ? new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR" }).format(n)
+        : n;
+
+const byAscStart = (a, b) =>
+    new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime();
+const byDescStart = (a, b) =>
+    new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime();
+
+function usePartitioned(appointments) {
+    const now = Date.now();
+    return useMemo(() => {
+        const upcoming = [];
+        const past = [];
+        for (const a of appointments) {
+            const endMs = new Date(a.endDateTime).getTime();
+            (endMs < now ? past : upcoming).push(a);
         }
-    >
-        {children}
-    </span>
-);
+        upcoming.sort(byAscStart);
+        past.sort(byDescStart);
+        return { upcoming, past, all: [...upcoming, ...past] };
+    }, [appointments]);
+}
 
-const Card = ({ children, className = "" }) => (
-    <div className={`rounded-2xl bg-white shadow-sm ring-1 ring-black/5 ${className}`}>{children}</div>
-);
+const TABS = [
+    { key: "upcoming", label: "Upcoming" },
+    { key: "all", label: "All" },
+    { key: "past", label: "Past" },
+];
 
-// --- Main Component ------------------------------------------------------
-const tabs = ["Upcoming", "Past", "Custom Date"];
+export default function ProviderAppointments() {
+    const [appointments, setAppointments] = useState([]);
+    const [activeTab, setActiveTab] = useState("all");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [confirmId, setConfirmId] = useState(null);
+    const [notice, setNotice] = useState("");
 
-export default function ProvidersAppointments({ appointments = [] }) {
-    const [activeTab, setActiveTab] = useState("Upcoming");
-    const [query, setQuery] = useState("");
-    const [from, setFrom] = useState("");
-    const [to, setTo] = useState("");
+    useEffect(() => {
+        const controller = new AbortController();
+        (async () => {
+            try {
+                setLoading(true);
+                setError("");
+                const json = await getAllAppointments(controller.signal);
+                setAppointments(Array.isArray(json) ? json : []);
+            } catch (e) {
+                if (e.name !== "AbortError") setError(e.message || "Failed to load appointments");
+            } finally {
+                setLoading(false);
+            }
+        })();
+        return () => controller.abort();
+    }, []);
 
-    const now = new Date();
+    const { upcoming, past, all } = usePartitioned(appointments);
+    const rows = activeTab === "upcoming" ? upcoming : activeTab === "past" ? past : all;
 
-    const filtered = useMemo(() => {
-        let list = appointments
-            .slice()
-            .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    const Empty = ({ title, note }) => (
+        <div className="p-12 text-center">
+            <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-50 to-indigo-50 ring-1 ring-inset ring-slate-200">
+                <span className="text-3xl">📅</span>
+            </div>
+            <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+            <p className="text-slate-500">{note}</p>
+        </div>
+    );
 
-        // search filter
-        if (query.trim()) {
-            const q = query.toLowerCase();
-            list = list.filter((a) =>
-                [a.title, a.customer, a.recruiter, a.bookingId]
-                    .filter(Boolean)
-                    .some((v) => String(v).toLowerCase().includes(q))
-            );
-        }
-
-        if (activeTab === "Upcoming") {
-            list = list.filter((a) => !isPast(a, now));
-        } else if (activeTab === "Past") {
-            list = list.filter((a) => isPast(a, now));
-            list.reverse(); // show most recent past first
-        } else if (activeTab === "Custom Date") {
-            const fromDate = from ? new Date(from + "T00:00:00") : undefined;
-            const toDate = to ? new Date(to + "T23:59:59") : undefined;
-            list = list.filter((a) => {
-                const s = new Date(a.start);
-                return (!fromDate || s >= fromDate) && (!toDate || s <= toDate);
-            });
-        }
-
-        return list;
-    }, [appointments, activeTab, query, from, to]);
+    if (loading) return <div className="p-6 text-slate-500 animate-pulse">Loading appointments…</div>;
+    if (error) return <div className="p-6 text-rose-600">{error}</div>;
 
     return (
-        <div className="flex h-full w-full flex-col gap-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-xl font-semibold text-slate-800">Appointments</h1>
+        <div className="p-6 w-full max-w-screen-2xl mx-auto">
+            {notice && (
+                <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700 shadow-sm transition">
+                    {notice}
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <input
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search by title, customer, ID..."
-                            className="h-10 w-64 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none ring-0 placeholder:text-slate-400 focus:border-slate-300 focus:ring-2 focus:ring-slate-200"
-                        />
-                    </div>
-                    <button className="h-10 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-slate-800 active:bg-slate-900">
-                        New Appointment
-                    </button>
+            )}
+
+            <div className="mb-5 flex items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-semibold text-slate-900">Provider Appointments</h1>
+                    <p className="text-slate-600 text-sm">
+                        {activeTab === "all"
+                            ? `Upcoming first · ${appointments.length} total`
+                            : activeTab === "upcoming"
+                                ? `${upcoming.length} upcoming`
+                                : `${past.length} past`}
+                    </p>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <Card>
-                <div className="border-b border-slate-200">
-                    <div className="flex items-center gap-1 px-3">
-                        {tabs.map((t) => (
+            <div role="tablist" aria-label="Appointment filters" className="mb-4">
+                <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+                    {TABS.map((t) => {
+                        const active = activeTab === t.key;
+                        return (
                             <button
-                                key={t}
-                                onClick={() => setActiveTab(t)}
-                                className={`relative px-3 py-2 text-sm font-medium text-slate-600 transition ${activeTab === t ? "text-slate-900" : "hover:text-slate-900"
-                                    }`}
+                                key={t.key}
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setActiveTab(t.key)}
+                                className={[
+                                    "relative px-4 py-2 text-sm font-medium rounded-xl transition",
+                                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400",
+                                    active
+                                        ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-sm"
+                                        : "text-slate-700 hover:bg-slate-50 active:scale-[.98]",
+                                ].join(" ")}
                             >
-                                {t}
-                                {activeTab === t && (
-                                    <motion.div
-                                        layoutId="tab-underline"
-                                        className="absolute inset-x-2 -bottom-px h-0.5 bg-slate-900"
-                                    />
-                                )}
+                                {t.label}
                             </button>
-                        ))}
-                        <div className="ml-auto flex items-center gap-2 py-2">
-                            {activeTab === "Custom Date" && (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="date"
-                                        value={from}
-                                        onChange={(e) => setFrom(e.target.value)}
-                                        className="h-9 rounded-lg border border-slate-200 px-2 text-sm"
-                                    />
-                                    <span className="text-slate-400 text-sm">to</span>
-                                    <input
-                                        type="date"
-                                        value={to}
-                                        onChange={(e) => setTo(e.target.value)}
-                                        className="h-9 rounded-lg border border-slate-200 px-2 text-sm"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            setFrom("");
-                                            setTo("");
-                                        }}
-                                        className="h-9 rounded-lg border border-slate-200 px-3 text-sm hover:bg-slate-50"
+                        );
+                    })}
+                </div>
+            </div>
+
+            {rows.length === 0 ? (
+                activeTab === "upcoming" ? (
+                    <Empty title="No upcoming appointments" note="New bookings will show up here." />
+                ) : activeTab === "past" ? (
+                    <Empty title="No past appointments" note="Once appointments end, they’ll be listed here." />
+                ) : (
+                    <Empty title="No appointments yet" note="They will appear here once scheduled." />
+                )
+            ) : (
+                <div className="w-full overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <table className="w-full min-w-[720px] table-fixed text-left">
+                        <thead className="sticky top-0 z-10 bg-slate-50/80 backdrop-blur supports-[backdrop-filter]:bg-slate-50/60">
+                            <tr className="border-b border-slate-200">
+                                <Th>Name</Th>
+                                <Th>Duration</Th>
+                                <Th>Price</Th>
+                                <Th>Service Type</Th>
+                                <Th>Start</Th>
+                                <Th>End</Th>
+                                {activeTab === "all" && <Th>Status</Th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((appt) => {
+                                const isPast = new Date(appt.endDateTime).getTime() < Date.now();
+                                return (
+                                    <tr
+                                        key={appt.id}
+                                        className={[
+                                            "odd:bg-white even:bg-slate-50/40",
+                                            "transition-colors hover:bg-sky-50/60 focus-within:bg-sky-50/60",
+                                        ].join(" ")}
                                     >
-                                        Clear
-                                    </button>
-                                </div>
-                            )}
+                                        <Td className="font-medium text-slate-900">{appt.name}</Td>
+                                        <Td>{appt.durationInMinutes} min</Td>
+                                        <Td>{fmtPrice(appt.price)}</Td>
+                                        <Td>{String(appt.serviceType)}</Td>
+                                        <Td>{fmtDateTime(appt.startDateTime)}</Td>
+                                        <Td>{fmtDateTime(appt.endDateTime)}</Td>
+
+                                        {activeTab === "all" && (
+                                            <Td>
+                                                <span
+                                                    className={[
+                                                        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
+                                                        isPast
+                                                            ? "bg-rose-50 text-rose-700 ring-rose-200"
+                                                            : "bg-emerald-50 text-emerald-700 ring-emerald-200 animate-pulse",
+                                                    ].join(" ")}
+                                                >
+                                                    <span
+                                                        className={["h-1.5 w-1.5 rounded-full", isPast ? "bg-rose-500" : "bg-emerald-500"].join(" ")}
+                                                    />
+                                                    {isPast ? "Past" : "Upcoming"}
+                                                </span>
+                                            </Td>
+                                        )}
+
+
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {confirmId && (
+                <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40" onClick={() => !deleting && setConfirmId(null)} />
+                    <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+                        <h3 className="text-lg font-semibold text-slate-900">Delete appointment?</h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                            This action cannot be undone. The reservation will be permanently removed.
+                        </p>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmId(null)}
+                                disabled={deleting}
+                                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (!confirmId) return;
+                                    setDeleting(true);
+                                    const previous = appointments;
+                                    setAppointments((prev) => prev.filter((a) => a.id !== confirmId));
+                                    try {
+                                        await deleteAppointment(confirmId);
+                                        setNotice("Appointment deleted.");
+                                        setConfirmId(null);
+                                    } catch (e) {
+                                        setAppointments(previous); // rollback
+                                        setNotice(e.message || "Failed to delete appointment.");
+                                        setConfirmId(null);
+                                    } finally {
+                                        setDeleting(false);
+                                        setTimeout(() => setNotice(""), 3000);
+                                    }
+                                }}
+                                disabled={deleting}
+                                className="rounded-lg px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 disabled:opacity-50"
+                            >
+                                {deleting ? "Deleting…" : "Delete"}
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                {/* Table header */}
-                <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                    <div className="col-span-3">Time</div>
-                    <div className="col-span-2">Booking ID</div>
-                    <div className="col-span-3">Title</div>
-                    <div className="col-span-2">Recruiter / Customer</div>
-                    <div className="col-span-1">Price</div>
-                    <div className="col-span-1 text-right">Status</div>
-                </div>
-
-                {/* Rows */}
-                <AnimatePresence mode="popLayout">
-                    {groupByDay(filtered).map(({ day, items }) => (
-                        <motion.div key={day} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            <div className="border-t border-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-                                {fmtDay(new Date(day))}
-                            </div>
-                            {items.map((a) => (
-                                <Row key={a.id} a={a} />
-                            ))}
-                        </motion.div>
-                    ))}
-
-                    {filtered.length === 0 && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-6 py-12 text-center text-slate-500">
-                            No appointments to show.
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </Card>
+            )}
         </div>
     );
 }
 
-function Row({ a }) {
-    const start = new Date(a.start);
-    const end = new Date(a.end);
-
-    const statusTone = {
-        Scheduled: "violet",
-        Completed: "green",
-        Cancelled: "red",
-        "No-show": "amber",
-    };
-
+function Th({ children }) {
     return (
-        <div className="grid grid-cols-12 gap-2 border-t border-slate-100 px-4 py-3 text-sm hover:bg-slate-50/50">
-            <div className="col-span-3 flex items-center gap-2">
-                <Clock size={16} className="text-slate-400" />
-                <div className="tabular-nums text-slate-700">
-                    {fmtTime(start)} – {fmtTime(end)}
-                </div>
-            </div>
-            <div className="col-span-2 text-slate-600">{a.bookingId}</div>
-            <div className="col-span-3 font-medium text-slate-800">{a.title}</div>
-            <div className="col-span-2 text-slate-600">
-                <div className="truncate">{a.recruiter || "—"}</div>
-                <div className="truncate text-slate-400 text-xs">{a.customer || ""}</div>
-            </div>
-            <div className="col-span-1 text-slate-700">{a.price || (a.paymentStatus === "Free" ? "Free" : a.paymentStatus)}</div>
-            <div className="col-span-1 text-right">
-                <Badge tone={statusTone[a.status]}>{a.status}</Badge>
-            </div>
-        </div>
+        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+            {children}
+        </th>
     );
 }
-
-// --- Helper: group by day ------------------------------------------------
-function groupByDay(list) {
-    const map = new Map();
-    for (const a of list) {
-        const d = new Date(a.start);
-        const dayKey = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
-        map.set(dayKey, [...(map.get(dayKey) || []), a]);
-    }
-    return Array.from(map.entries())
-        .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-        .map(([day, items]) => ({ day, items }));
-}
-
-// --- Demo (optional) -----------------------------------------------------
-export function DemoPage() {
-    const sample = [
-        {
-            id: "1",
-            bookingId: "TE-00001",
-            title: "Recruitment Strategy Meeting",
-            start: new Date().toISOString().slice(0, 10) + "T09:15:00",
-            end: new Date().toISOString().slice(0, 10) + "T09:45:00",
-            recruiter: "Blagovest Papazov",
-            customer: "gosho",
-            price: "Free",
-            paymentStatus: "Free",
-            status: "Completed",
-        },
-        {
-            id: "2",
-            bookingId: "TE-00002",
-            title: "Initial Screening Call",
-            start: addDaysISO(new Date(), 2).slice(0, 19),
-            end: addDaysISO(new Date(), 2, 30).slice(0, 19),
-            recruiter: "Maria Petrova",
-            customer: "Acme Corp",
-            price: "$0",
-            paymentStatus: "Free",
-            status: "Scheduled",
-        },
-        {
-            id: "3",
-            bookingId: "TE-00003",
-            title: "Follow-up Interview",
-            start: addDaysISO(new Date(), -5).slice(0, 19),
-            end: addDaysISO(new Date(), -5, 45).slice(0, 19),
-            recruiter: "Ivan Dimitrov",
-            customer: "Acme Corp",
-            price: "$49",
-            paymentStatus: "Paid",
-            status: "Completed",
-        },
-    ];
-
-    return (
-        <div className="min-h-screen bg-slate-100 p-6">
-            <ProvidersAppointments appointments={sample} />
-        </div>
-    );
-}
-
-function addDaysISO(date, days = 0, minutes = 0) {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    d.setMinutes(d.getMinutes() + minutes);
-    return d.toISOString();
+function Td({ children, className = "" }) {
+    return <td className={`px-4 py-3 text-sm text-slate-700 ${className}`}>{children}</td>;
 }

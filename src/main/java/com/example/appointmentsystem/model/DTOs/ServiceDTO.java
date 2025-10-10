@@ -4,11 +4,12 @@ import com.example.appointmentsystem.model.User;
 import com.example.appointmentsystem.model.enums.ServiceType;
 
 public class ServiceDTO {
-
+    private long id;
     private long serviceId;
     private String name;
     private String description;
-    private User provider;
+
+    private ProvidersNamesDTOs provider;
     private double price;
     private int duration;
     private ServiceType serviceType;
@@ -16,7 +17,8 @@ public class ServiceDTO {
     public ServiceDTO() {
     }
 
-    public ServiceDTO(long serviceId, String name, String description, User provider, double price, int duration, ServiceType serviceType) {
+    public ServiceDTO(long id, long serviceId, String name, String description, ProvidersNamesDTOs provider, double price, int duration, ServiceType serviceType) {
+        this.id = id;
         this.serviceId = serviceId;
         this.name = name;
         this.description = description;
@@ -24,6 +26,15 @@ public class ServiceDTO {
         this.price = price;
         this.duration = duration;
         this.serviceType = serviceType;
+    }
+
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
     }
 
     public long getServiceId() {
@@ -50,11 +61,11 @@ public class ServiceDTO {
         this.description = description;
     }
 
-    public User getProvider() {
+    public ProvidersNamesDTOs getProvider() {
         return provider;
     }
 
-    public void setProvider(User provider) {
+    public void setProvider(ProvidersNamesDTOs provider) {
         this.provider = provider;
     }
 

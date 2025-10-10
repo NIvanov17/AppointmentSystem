@@ -12,7 +12,6 @@ export default function SignUpRoleSelect() {
                 </h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Normal User card */}
                     <button
                         onClick={() => navigate("/signup/user")}
                         className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-all text-left focus:outline-none focus:ring-4 focus:ring-sky-300"
@@ -44,7 +43,6 @@ export default function SignUpRoleSelect() {
                         </div>
                     </button>
 
-                    {/* Provider card */}
                     <button
                         onClick={() => navigate("/signup/provider")}
                         className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-all text-left focus:outline-none focus:ring-4 focus:ring-sky-300"
@@ -77,7 +75,6 @@ export default function SignUpRoleSelect() {
                     </button>
                 </div>
 
-                {/* Back to Home button */}
                 <div className="flex justify-center mt-8">
                     <button
                         onClick={() => navigate("/")}

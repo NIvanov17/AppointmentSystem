@@ -3,6 +3,7 @@ package com.example.appointmentsystem.config;
 import com.example.appointmentsystem.repository.UserRepository;
 import com.example.appointmentsystem.security.JwtAuthenticationFilter;
 import com.example.appointmentsystem.service.ApplicationUserDetailsService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +14,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +23,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 
 import java.util.List;
 
@@ -39,10 +44,6 @@ public class SecurityConfig {
         this.uds = uds;
     }
 
-//    @Bean
-//    public UserDetailsService userDetailsService(UserRepository userRepository) {
-//        return new ApplicationUserDetailsService(userRepository);
-//    }
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -63,14 +64,17 @@ public class SecurityConfig {
 
 
     @Bean
-    public SecurityFilterChain security(HttpSecurity http,  DaoAuthenticationProvider provider) throws Exception {
+    public SecurityFilterChain security(HttpSecurity http, DaoAuthenticationProvider provider) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/register/**", "/api/login", "api/service-types", "/api/register/service").permitAll()
+                        .requestMatchers("/api/register/**", "/api/login", "/api/register/service", "/api/service-type").permitAll()
+                        .requestMatchers( "/api/service/all", "/api/all-providers", "/api/appointment").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/service/available-slots",  "/api/appointments/all", "/api/user/profile",
+                                "/api/appointment","/api/provider/services", "/api/provider/service").authenticated()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(provider)
@@ -82,7 +86,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of("http://localhost:5173"));
-        cors.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("*"));
         cors.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

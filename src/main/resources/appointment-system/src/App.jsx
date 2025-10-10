@@ -11,6 +11,7 @@ import SignUpProvider from "./routes/SignUpProvider";
 import RegisterService from "./routes/RegisterService";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import BookService from "./components/Bookservice";
+import ProviderMenageService from "./components/ProviderMenageService";
 
 const Placeholder = ({ title }) => (
     <div className="p-6 text-slate-500 text-center">
@@ -34,7 +35,7 @@ export default function App() {
                 <Route path="/app/providers" element={<Providers />}>
                     <Route index element={<Navigate to="appointment-providers" replace />} />
                     <Route path="appointment-providers" element={<AppointmentsProviders />} />
-                    <Route path="services" element={<Placeholder title="Services" />} />
+                    <Route path="services" element={<ProviderMenageService />} />
                     <Route path="home" element={<Placeholder title="Home" />} />
                     <Route path="booking-pages" element={<Placeholder title="Booking Pages" />} />
                     <Route path="trainers" element={<Placeholder title="Trainers" />} />

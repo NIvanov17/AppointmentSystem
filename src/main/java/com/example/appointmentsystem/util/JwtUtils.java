@@ -34,7 +34,7 @@ public class JwtUtils {
                 .signWith(SECRET_KEY).compact();
     }
 
-    public String extractUsername(String token) {
+    public String extractEmail(String token) {
         return Jwts
                 .parser()
                 .setSigningKey(SECRET_KEY)
@@ -75,7 +75,7 @@ public class JwtUtils {
     }
 
     public boolean isTokenValid(String token, String username) {
-        String extractedUsername = extractUsername(token);
+        String extractedUsername = extractEmail(token);
         boolean isValid = extractedUsername.equals(username) && !isTokenExpired(token);
 
         return (extractedUsername.equals(username) && !isTokenExpired(token));

@@ -1,5 +1,7 @@
 package com.example.appointmentsystem.service;
 
+import com.example.appointmentsystem.model.DTOs.ProfileDTO;
+import com.example.appointmentsystem.model.DTOs.ProvidersNamesDTOs;
 import com.example.appointmentsystem.model.DTOs.RegisterClientDTO;
 import com.example.appointmentsystem.model.User;
 
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -48,7 +51,7 @@ public class UserService {
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(()->new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
     public void registerProvider(RegisterClientDTO dto) {
@@ -61,5 +64,25 @@ public class UserService {
         user.setRole(Role.PROVIDER);
 
         userRepository.save(user);
+    }
+
+    public List<ProvidersNamesDTOs> getAllByRole(Role role) {
+        List<User> users = userRepository.getAllByRole(role);
+        List<ProvidersNamesDTOs> dtos = new ArrayList<>();
+        users.forEach(user -> {
+            ProvidersNamesDTOs dto = new ProvidersNamesDTOs(user.getId(), user.getFirstName(), user.getLastName());
+            dtos.add(dto);
+        });
+        return dtos;
+    }
+
+    public User getUserById(Long providerId) {
+        return userRepository.findById(providerId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    public ProfileDTO getProfileData(String email) {
+        User user = getUserByEmail(email);
+        return new ProfileDTO(user.getFirstName(), user.getLastName(), user.getEmail());
     }
 }

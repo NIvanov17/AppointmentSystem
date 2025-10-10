@@ -50,7 +50,6 @@ export default function Register() {
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* top bar */}
             <header className="border-b border-slate-200 bg-white">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
                     <Link to="/" className="flex items-center gap-2">
@@ -65,15 +64,11 @@ export default function Register() {
                     </Link>
                 </div>
             </header>
-
-            {/* content */}
             <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 <div className="grid gap-8 lg:grid-cols-2">
-                    {/* left: form card */}
                     <div className="mx-auto w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                         <h1 className="text-2xl font-bold tracking-tight">Create business account</h1>
 
-                        {/* error message */}
                         {error && (
                             <div
                                 role="alert"
@@ -186,7 +181,6 @@ export default function Register() {
                         </form>
                     </div>
 
-                    {/* right: static info */}
                     <aside className="mx-auto w-full max-w-xl lg:mx-0">
                         <h2 className="text-2xl font-bold tracking-tight">Start your free 14-day trial now</h2>
                         <p className="mt-1 text-slate-600">No fees. No credit card required.</p>

@@ -26,7 +26,6 @@ export default function Login() {
                 if (res.status === 401) {
                     setError("Invalid email or password");
                 } else {
-                    // Try to read server message if any
                     let msg = "Something went wrong. Please try again.";
                     try {
                         const errData = await res.json();
@@ -56,7 +55,6 @@ export default function Login() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
-            {/* top bar with logo -> home */}
             <header className="border-b border-slate-200 bg-white">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
                     <Link to="/" className="flex items-center gap-2">
@@ -125,14 +123,6 @@ export default function Login() {
                                 LOG IN
                             </button>
 
-                            <div className="text-center">
-                                <Link
-                                    to="/forgot-password"
-                                    className="text-xs font-semibold text-slate-600 hover:underline"
-                                >
-                                    FORGOT YOUR PASSWORD?
-                                </Link>
-                            </div>
 
                             <p className="mt-4 text-xs leading-relaxed text-slate-500">
                                 By signing in or creating an account, you agree with{" "}

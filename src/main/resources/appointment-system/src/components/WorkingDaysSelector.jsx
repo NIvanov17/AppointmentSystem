@@ -16,8 +16,6 @@ export default function WorkingDaysSelector({ value, onChange }) {
     return (
         <section className="space-y-3">
             <label className="block text-sm font-medium text-slate-700">Working Days</label>
-
-            {/* Use 2 columns only on md+ so there’s enough width */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {DAYS.map((day) => {
                     const selected = value.find((d) => d.dayOfWeek === day);
@@ -31,7 +29,6 @@ export default function WorkingDaysSelector({ value, onChange }) {
                                 selected ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white hover:bg-slate-50"
                             ].join(" ")}
                         >
-                            {/* Checkbox + day label (doesn't grow) */}
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
                                     type="checkbox"
@@ -41,18 +38,14 @@ export default function WorkingDaysSelector({ value, onChange }) {
                                 />
                                 <span className="text-sm font-semibold text-slate-800">{day}</span>
                             </label>
-
-                            {/* Times: wrap to next line when cramped */}
                             {selected && (
                                 <div className="ml-auto flex w-full items-center gap-2 md:w-auto md:flex-nowrap md:justify-end">
-                                    {/* On small widths, show each input full width stacked; on md+ fixed width inline */}
                                     <input
                                         type="time"
                                         value={selected.startTime}
                                         onChange={(e) => handleTimeChange(day, "startTime", e.target.value)}
                                         className="w-full md:w-[7.5rem] rounded-lg border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
                                     />
-                                    {/* Hide the dash when stacked */}
                                     <span className="hidden text-slate-500 md:inline">–</span>
                                     <input
                                         type="time"

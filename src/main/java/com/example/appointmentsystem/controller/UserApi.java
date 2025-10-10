@@ -1,12 +1,11 @@
 package com.example.appointmentsystem.controller;
 
-import com.example.appointmentsystem.model.DTOs.JwtResponse;
-import com.example.appointmentsystem.model.DTOs.LoginDTO;
-import com.example.appointmentsystem.model.DTOs.RegisterClientDTO;
+import com.example.appointmentsystem.model.DTOs.*;
 import com.example.appointmentsystem.model.enums.Role;
 import com.example.appointmentsystem.service.ApplicationUserDetailsService;
 import com.example.appointmentsystem.service.UserService;
 import com.example.appointmentsystem.util.JwtUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -32,15 +28,12 @@ public class UserApi {
 
     private final UserService userService;
 
-    private final ApplicationUserDetailsService userDetailsService;
-
     private final JwtUtils jwt;
 
     @Autowired
-    public UserApi(AuthenticationManager authenticationManager, UserService userService, ApplicationUserDetailsService userDetailsService, JwtUtils jwt) {
+    public UserApi(AuthenticationManager authenticationManager, UserService userService, JwtUtils jwt) {
         this.authenticationManager = authenticationManager;
         this.userService = userService;
-        this.userDetailsService = userDetailsService;
         this.jwt = jwt;
     }
 
@@ -76,5 +69,19 @@ public class UserApi {
         } catch (AuthenticationException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+    }
+
+    @GetMapping("/api/all-providers")
+    public ResponseEntity<List<ProvidersNamesDTOs>> getAllProviders() {
+        List<ProvidersNamesDTOs> providers = userService.getAllByRole(Role.PROVIDER);
+        return ResponseEntity.ok(providers);
+    }
+
+    @GetMapping("/api/user/profile")
+    public ResponseEntity<ProfileDTO> getProfileData(HttpServletRequest request) {
+        String token = jwt.getTokenFromRequest(request);
+        String email = jwt.extractEmail(token);
+        ProfileDTO dto =  userService.getProfileData(email);
+        return ResponseEntity.ok(dto);
     }
 }

@@ -7,8 +7,6 @@ import logoPng from "../assets/logo_ready.png";
 export default function RegisterService() {
     const location = useLocation();
     const navigate = useNavigate();
-
-    // Provider email passed from previous step
     const providerEmail = location.state?.email || "";
 
     const [serviceTypes, setServiceTypes] = useState([]);
@@ -26,8 +24,6 @@ export default function RegisterService() {
     });
 
     const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-    // Optional: pretty labels for enum names
     const labelize = (s) =>
         s.replace(/_/g, " ").toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 
@@ -57,8 +53,6 @@ export default function RegisterService() {
     const onSubmit = (e) => {
         e.preventDefault();
         setError(null);
-
-        // basic client-side validation
         const priceNum = Number(form.price);
         const durNum = Number(form.durationMinutes);
         if (!providerEmail) {
@@ -87,7 +81,7 @@ export default function RegisterService() {
         }
 
         const dto = {
-            serviceType: form.serviceType,      // must match your enum string
+            serviceType: form.serviceType,
             name: form.name.trim(),
             description: form.description.trim(),
             price: priceNum,
@@ -120,7 +114,6 @@ export default function RegisterService() {
 
     return (
         <div className="min-h-screen bg-white text-slate-900">
-            {/* Top bar */}
             <header className="border-b border-slate-200 bg-white">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
                     <Link to="/" className="flex items-center gap-2">
@@ -130,7 +123,6 @@ export default function RegisterService() {
                 </div>
             </header>
 
-            {/* Stepper */}
             <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
                 <ol className="flex items-center gap-4 text-sm text-slate-600">
                     <li className="flex items-center gap-2">
@@ -145,7 +137,6 @@ export default function RegisterService() {
                 </ol>
             </div>
 
-            {/* Card */}
             <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                     <div className="flex items-start justify-between gap-4">
@@ -165,7 +156,6 @@ export default function RegisterService() {
                     )}
 
                     <form onSubmit={onSubmit} className="mt-6 space-y-6">
-                        {/* Grid */}
                         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div className="sm:col-span-1">
                                 <label htmlFor="serviceType" className="mb-1 block text-sm font-medium text-slate-700">
