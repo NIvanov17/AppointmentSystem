@@ -138,7 +138,6 @@ function HeroSection({ isLoggedIn, appPath }) {
                         )}
                     </div>
 
-                    <SocialProof />
                 </div>
 
                 <HeroImages />
@@ -152,27 +151,6 @@ function Star({ className = "h-4 w-4" }) {
         <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
             <path d="M12 17.27l6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73-1.64 7.03L12 17.27z" />
         </svg>
-    );
-}
-function SocialProof() {
-    return (
-        <div className="mt-8 flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:gap-6">
-            <div className="flex items-center gap-2">
-                <div className="flex items-center">
-                    {[0, 1, 2, 3, 4].map(i => <Star key={i} className="h-4 w-4 text-amber-400" />)}
-                </div>
-                <span className="font-medium text-slate-700">4.9/5</span>
-                <span className="text-slate-400">from 1,200+ reviews</span>
-            </div>
-
-            <span className="hidden text-slate-300 sm:inline">•</span>
-
-            <div className="flex items-center gap-4">
-                <span><span className="font-semibold text-slate-800">25k+</span> monthly bookings</span>
-                <span className="hidden text-slate-300 sm:inline">•</span>
-                <span><span className="font-semibold text-slate-800">5k+</span> teams onboarded</span>
-            </div>
-        </div>
     );
 }
 
