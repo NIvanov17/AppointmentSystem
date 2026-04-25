@@ -74,6 +74,8 @@ Clients can browse available services and create an appointment by:
 - selecting an available time slot
 - confirming the booking
 
+  <img width="1909" height="752" alt="image" src="https://github.com/user-attachments/assets/7e558b75-fc46-472f-bf1d-18c589532964" />
+
 ---
 
 ### Appointments Dashboard
@@ -88,6 +90,8 @@ The appointments dashboard displays booked appointments with important details s
 - end time
 - appointment status
 - available actions such as deleting an appointment
+
+  <img width="1909" height="752" alt="image" src="https://github.com/user-attachments/assets/7e558b75-fc46-472f-bf1d-18c589532964" />
 
 ---
 
