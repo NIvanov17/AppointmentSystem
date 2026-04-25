@@ -25,6 +25,7 @@ The platform can be used by businesses and professionals such as hair salons, be
 ### Landing Page
 
 The landing page introduces the platform and presents the main idea of the application — scheduling appointments, improving service management, and helping users organize bookings in one place.
+<img width="1866" height="933" alt="image" src="https://github.com/user-attachments/assets/9f7bdad4-b26b-4cfa-a0a7-ce70e9c199e0" />
 
 It highlights core benefits such as:
 
@@ -152,7 +153,7 @@ Providers can update existing services by changing:
 
 The goal of this project is to build a real-world appointment booking system with a modern user interface, structured backend architecture, and practical business logic.
 
-The project demonstrates full-stack development skills, including frontend application structure, REST API communication, database persistence, authentication, role-based flows, and appointment scheduling logic.<img width="1866" height="933" alt="image" src="https://github.com/user-attachments/assets/9f7bdad4-b26b-4cfa-a0a7-ce70e9c199e0" />
+The project demonstrates full-stack development skills, including frontend application structure, REST API communication, database persistence, authentication, role-based flows, and appointment scheduling logic.
   
   <img width="1487" height="760" alt="image" src="https://github.com/user-attachments/assets/2223e43d-0d88-42a0-8f0c-cefcde4440c2" />
   
