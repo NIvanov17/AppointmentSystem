@@ -165,9 +165,5 @@ The goal of this project is to build a real-world appointment booking system wit
 
 The project demonstrates full-stack development skills, including frontend application structure, REST API communication, database persistence, authentication, role-based flows, and appointment scheduling logic.
 
-<img width="1893" height="844" alt="image" src="https://github.com/user-attachments/assets/195f1b17-722b-4ffb-80b5-ef7c41bc4d05" />
-
-<img width="1894" height="921" alt="image" src="https://github.com/user-attachments/assets/f6020cf5-35f5-4da0-ab94-b9375be116cf" />
-
 
 
