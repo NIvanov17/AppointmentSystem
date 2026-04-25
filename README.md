@@ -42,6 +42,8 @@ After entering the platform, the user can choose how they want to use the applic
 - **Book appointments** — for clients who want to find and reserve services
 - **Provide services** — for providers who want to create services, define availability, and accept bookings
 
+  <img width="1487" height="760" alt="image" src="https://github.com/user-attachments/assets/2223e43d-0d88-42a0-8f0c-cefcde4440c2" />
+
 ---
 
 ### Service Registration Page
@@ -55,6 +57,8 @@ Service providers can create a new service by entering:
 - duration in minutes
 - working days
 - start and end working hours for each selected day
+
+    <img width="1123" height="945" alt="image" src="https://github.com/user-attachments/assets/b4a339b9-9575-44fc-9296-db9d178873f2" />
 
 ---
 
@@ -154,10 +158,6 @@ Providers can update existing services by changing:
 The goal of this project is to build a real-world appointment booking system with a modern user interface, structured backend architecture, and practical business logic.
 
 The project demonstrates full-stack development skills, including frontend application structure, REST API communication, database persistence, authentication, role-based flows, and appointment scheduling logic.
-  
-  <img width="1487" height="760" alt="image" src="https://github.com/user-attachments/assets/2223e43d-0d88-42a0-8f0c-cefcde4440c2" />
-  
-  <img width="1123" height="945" alt="image" src="https://github.com/user-attachments/assets/b4a339b9-9575-44fc-9296-db9d178873f2" />
   
 <img width="1909" height="752" alt="image" src="https://github.com/user-attachments/assets/7e558b75-fc46-472f-bf1d-18c589532964" />
 
